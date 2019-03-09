@@ -103,7 +103,7 @@ class TatoebaScraper:
         Internal: None -> None
         Stores the sentence id into data
         """
-        data['sentence_id'] = self.soup.find(id='SentenceSentenceId').attrs['value']
+        data['sentence_id'] = self.soup.find('div', class_='mainSentence').attrs['data-sentence-id']
 
     def _add_romanization(self, div, data):
         """
@@ -133,11 +133,11 @@ class TatoebaScraper:
         data['translations'] = {}
 
         # Scrape alt flag name and translation text
-        div = self.soup.find('div', class_='translations')
-        translations = div.find_all('a', class_='text')
+        div = self.soup.find('div', class_='directTranslation')
+        translations = div.find_all('div', class_='text')
         flags = div.find_all('img', class_='languageFlag')
         for i in range(0, len(translations)):
-            lang_short = flags[i].attrs['alt']
+            lang_short = translations[i].attrs['lang']
             data['translations'][lang_short] = {
                 'sentence': translations[i].string,
                 'language': flags[i].attrs['title'],
