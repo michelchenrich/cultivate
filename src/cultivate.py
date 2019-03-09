@@ -14,7 +14,7 @@ def main():
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description='Select languages and sentences')
     parser.add_argument('-c', type=int, default=1, help='count')
-    parser.add_argument('-l', default='jpn', help='language to learn')
+    parser.add_argument('-l', default='deu', help='language to learn')
     parser.add_argument('-t', default='eng', help='translated language')
     parser.add_argument('-n', type=int, default=0, help='sentence id')
     args = parser.parse_args()
