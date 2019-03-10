@@ -1,69 +1,32 @@
-"""
-Cultivate - scraper.py
-Apache License (c) 2015
-https://github.com/codenameyau/cultivate
-"""
 import requests
 import bs4
 
 class TatoebaScraper:
-
-    def __init__(self):
-        # Define language settings
-        self.language_original = 'deu'
-        self.language_translated = 'eng'
-        self.supported_languages = (
-                'cmn',  # Chinese
-                'deu',  # German
-                'eng',  # English
-                'fin',  # Finnish
-                'fra',  # French
-                'ita',  # Italian
-                'jpn',  # Japanese
-                'kor',  # Korean
-                'pol',  # Polish
-                'por',  # Portuguese
-                'rus',  # Russian
-                'spa',  # Spanish
-                )
-
-        # Define site path to scrape random sentence
-        self.site_base = 'https://tatoeba.org/eng/sentences/search?query={word}&from={original}&to={translated}&orphans=no&unapproved=no&user=&tags=&list=&has_audio=&trans_filter=limit&trans_to=eng&trans_link=&trans_user=&trans_orphan=&trans_unapproved=no&trans_has_audio=&sort=words'
-        self.sentences = []
-
-    ##################
-    # Public Methods #
-    ##################
-    def set_languages(self, original, translated):
-        if translated in self.supported_languages and original in self.supported_languages:
-            self.language_translated = translated
-            self.language_original = original
-
-    def set_word(self, word_to_learn):
+    def __init__(self, word_to_learn, original_language, translated_language):
         self.word_to_learn = word_to_learn
+        self.language_translated = translated_language
+        self.language_original = original_language
+        self.site_base = 'https://tatoeba.org/eng/sentences/search?query={word}&from={original}&to={translated}&orphans=no&unapproved=no&user=&tags=&list=&has_audio=&trans_filter=limit&trans_to=eng&trans_link=&trans_user=&trans_orphan=&trans_unapproved=no&trans_has_audio=&sort=words'
 
     def get_sentences(self):
         return self.scrape_sentences(requests.get(self.site_url()))
 
-    ####################
-    # Internal Methods #
-    ####################
     def site_url(self):
         return self.site_base.format(word=self.word_to_learn, original=self.language_original, translated=self.language_translated)
 
-    def scrape_sentences(self, res):
+    def scrape_sentences(self, response):
         sentences = []
-        if res.status_code == 200:
-            soup = bs4.BeautifulSoup(res.content)
+        if response.status_code == 200:
+            soup = bs4.BeautifulSoup(response.content)
             divs = soup.find_all('div', class_='sentence-and-translations')
             for div in divs:
-                sentece = {}
-                self._find_original_sentence(div, sentece)
-                self._find_translations(div, sentece)
-                sentences.append(sentece)
+                sentences.append({
+                        'text': self.get_original_sentence(div),
+                        'translation': self.get_translation(div)
+                        })
         return sentences
 
-    def _find_original_sentence(self, sentence_div, data):
+    def get_original_sentence(self, sentence_div):
         div = sentence_div.find('div', class_='sentence').find('div', class_='text')
 
         sentence_text = ''
@@ -71,17 +34,11 @@ class TatoebaScraper:
             sentence_text += part.string
         sentence_text = sentence_text.strip()
 
-        data['original'] = {}
-        data['original']['sentence'] = sentence_text 
+        return sentence_text 
 
-
-    def _find_translations(self, sentence_div, data):
-        data['translations'] = {}
-
+    def get_translation(self, sentence_div):
         translations = sentence_div.find_all('div', class_='translation')
         for translation in translations:
             flag = translation.find('img')
-            data['translations'][flag.attrs['alt']] = {
-                    'sentence': translation.find('div', class_='text').string.strip(),
-                    'language': flag.attrs['title']
-                    }
+            if flag.attrs['alt'] == self.language_translated:
+                return translation.find('div', class_='text').string.strip()

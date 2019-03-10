@@ -10,19 +10,8 @@ class Sentence(Resource):
         parser.add_argument("target_language")
         arguments = parser.parse_args()
 
-        scrape = scraper.TatoebaScraper()
-        scrape.set_languages(arguments["source_language"], arguments["target_language"])
-        scrape.set_word(arguments["word"])
-        return scrape.get_sentences(), 200
-
-    def post(self):
-        pass
-
-    def put(self):
-        pass
-
-    def delete(self):
-        pass
+        tatoeba = scraper.TatoebaScraper(arguments["word"], arguments["source_language"], arguments["target_language"])
+        return tatoeba.get_sentences(), 200
 
 app = Flask(__name__)
 api = Api(app)
