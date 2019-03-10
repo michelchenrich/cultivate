@@ -1,3 +1,4 @@
+import os
 from flask import Flask
 from flask_restful import Api, Resource, reqparse
 from tatoeba import scraper
@@ -16,4 +17,4 @@ class Sentence(Resource):
 app = Flask(__name__)
 api = Api(app)
 api.add_resource(Sentence, "/sentence")
-app.run()
+#app.run(port=os.environ['PORT'])
