@@ -7,40 +7,30 @@ from tatoeba import scraper
 import argparse
 
 def main():
-    """
-    Runs main program to parse arguments and retrieve
-    random sentences from tatoeba.
-    """
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description='Select languages and sentences')
-    parser.add_argument('-c', type=int, default=1, help='count')
     parser.add_argument('-l', default='deu', help='language to learn')
     parser.add_argument('-t', default='eng', help='translated language')
-    parser.add_argument('-n', type=int, default=0, help='sentence id')
+    parser.add_argument('-w', default='arbeit', help='word to learn')
     args = parser.parse_args()
 
     # Setup scraper for tatoeba
     scrape = scraper.TatoebaScraper()
     scrape.set_languages(args.l, args.t)
+    scrape.set_word(args.w)
     results = []
 
-    # Retrieve sentence by id or get random sentence
-    if args.n > 0:
-        results += scrape.get_sentence_by_id(args.n)
-    else:
-        results += scrape.get_random_sentences(args.c)
+    # Retrieve sentences for word
+    results += scrape.get_sentences()
 
-    for i in range(len(results)):
-        data = results[i]
-
+    for data in results:
         # Print sentence id
         lines = '-'*30
-        print "\n%s\nTatoeba Sentence ID: %s\n%s\n" % (lines, data['sentence_id'], lines)
 
         # Print original sentence
+        print lines
         print data['original']['sentence']
-        if 'romanization' in data['original']:
-            print "%s" % data['original']['romanization']
+        print lines
 
         # Print translation
         if args.t in data['translations']:

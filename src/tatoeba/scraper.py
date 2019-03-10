@@ -9,136 +9,79 @@ import bs4
 class TatoebaScraper:
 
     def __init__(self):
-        """
-        Constructor: (String, String) -> TatoebaScraper
-        Sets up the class data structures
-        """
         # Define language settings
-        self.language_original = 'jpn'
+        self.language_original = 'deu'
         self.language_translated = 'eng'
         self.supported_languages = (
-            'cmn',  # Chinese
-            'deu',  # German
-            'eng',  # English
-            'fin',  # Finnish
-            'fra',  # French
-            'ita',  # Italian
-            'jpn',  # Japanese
-            'kor',  # Korean
-            'pol',  # Polish
-            'por',  # Portuguese
-            'rus',  # Russian
-            'spa',  # Spanish
-        )
+                'cmn',  # Chinese
+                'deu',  # German
+                'eng',  # English
+                'fin',  # Finnish
+                'fra',  # French
+                'ita',  # Italian
+                'jpn',  # Japanese
+                'kor',  # Korean
+                'pol',  # Polish
+                'por',  # Portuguese
+                'rus',  # Russian
+                'spa',  # Spanish
+                )
 
         # Define site path to scrape random sentence
-        self.site_base = 'http://tatoeba.org/eng/sentences/show/'
-        self.site_url = self.site_base + self.language_original
+        self.site_base = 'https://tatoeba.org/eng/sentences/search?query={word}&from={original}&to={translated}&orphans=no&unapproved=no&user=&tags=&list=&has_audio=&trans_filter=limit&trans_to=eng&trans_link=&trans_user=&trans_orphan=&trans_unapproved=no&trans_has_audio=&sort=words'
         self.sentences = []
-        self.soup = None
-
 
     ##################
     # Public Methods #
     ##################
     def set_languages(self, original, translated):
-        """
-        Public: (String, String) -> None
-        Sets the languages for the scraper
-        """
-        if translated in self.supported_languages \
-            and original in self.supported_languages:
+        if translated in self.supported_languages and original in self.supported_languages:
             self.language_translated = translated
             self.language_original = original
-            self.set_url(self.language_original)
 
-    def set_url(self, target):
-        """
-        Public: (String) -> None
-        Sets the site_url to specified url
-        """
-        self.site_url = self.site_base + target
+    def set_word(self, word_to_learn):
+        self.word_to_learn = word_to_learn
 
-    def scrape_sentence(self, res):
-        """
-        Public: (Response) -> String
-        Returns the scraped content from response
-        """
-        data = {}
-        if res.status_code == 200:
-            self.soup = bs4.BeautifulSoup(res.content)
-            self._find_sentence_id(data)
-            self._find_original_sentence(data)
-            self._find_translations(data)
-        return data
-
-    def get_random_sentences(self, count):
-        """
-        Public: (Int) -> String
-        Scrapes the site and finds target article
-        """
-        for i in range(0, count):
-            scraped = self.scrape_sentence(requests.get(self.site_url))
-            if scraped:
-                self.sentences.append(scraped)
-        return self.sentences
-
-    def get_sentence_by_id(self, sentence_id):
-        """
-        Public: (Int) -> String
-        Returns the scraped sentence by the given id
-        """
-        self.set_url(str(sentence_id))
-        scraped = self.scrape_sentence(requests.get(self.site_url))
-        if scraped:
-            self.sentences.append(scraped)
-        return self.sentences
-
+    def get_sentences(self):
+        return self.scrape_sentences(requests.get(self.site_url()))
 
     ####################
     # Internal Methods #
     ####################
-    def _find_sentence_id(self, data):
-        """
-        Internal: None -> None
-        Stores the sentence id into data
-        """
-        data['sentence_id'] = self.soup.find('div', class_='mainSentence').attrs['data-sentence-id']
+    def site_url(self):
+        return self.site_base.format(word=self.word_to_learn, original=self.language_original, translated=self.language_translated)
 
-    def _add_romanization(self, div, data):
-        """
-        Internal: (Tag, Dict) -> None
-        """
-        romanization = div.find('div', class_='romanization')
-        if romanization:
-            if 'title' in romanization.attrs:
-                data['romanization'] = romanization.attrs['title']
+    def scrape_sentences(self, res):
+        sentences = []
+        if res.status_code == 200:
+            soup = bs4.BeautifulSoup(res.content)
+            divs = soup.find_all('div', class_='sentence-and-translations')
+            for div in divs:
+                sentece = {}
+                self._find_original_sentence(div, sentece)
+                self._find_translations(div, sentece)
+                sentences.append(sentece)
+        return sentences
 
-    def _find_original_sentence(self, data):
-        """
-        Internal: (Dict) -> None
-        Stores the main sentence into data
-        """
-        div = self.soup.find('div', class_='mainSentence')
+    def _find_original_sentence(self, sentence_div, data):
+        div = sentence_div.find('div', class_='sentence').find('div', class_='text')
+
+        sentence_text = ''
+        for part in div:
+            sentence_text += part.string
+        sentence_text = sentence_text.strip()
+
         data['original'] = {}
-        data['original']['sentence'] = div.find('div', class_='text').string
-        self._add_romanization(div, data['original'])
+        data['original']['sentence'] = sentence_text 
 
-    def _find_translations(self, data):
-        """
-        Internal: (Dict) -> None
-        Finds all additional translations and store in data
-        """
-        # [TODO]: Add romanization other languages
+
+    def _find_translations(self, sentence_div, data):
         data['translations'] = {}
 
-        # Scrape alt flag name and translation text
-        div = self.soup.find('div', class_='directTranslation')
-        translations = div.find_all('div', class_='text')
-        flags = div.find_all('img', class_='languageFlag')
-        for i in range(0, len(translations)):
-            lang_short = translations[i].attrs['lang']
-            data['translations'][lang_short] = {
-                'sentence': translations[i].string,
-                'language': flags[i].attrs['title'],
-                }
+        translations = sentence_div.find_all('div', class_='translation')
+        for translation in translations:
+            flag = translation.find('img')
+            data['translations'][flag.attrs['alt']] = {
+                    'sentence': translation.find('div', class_='text').string.strip(),
+                    'language': flag.attrs['title']
+                    }
